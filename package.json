@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/gathertown/forest-server#readme",
   "dependencies": {
+    "axios": "^0.20.0",
     "express": "^4.17.1"
   }
 }
