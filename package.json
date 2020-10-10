@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/gathertown/forest-server/issues"
   },
-  "homepage": "https://github.com/gathertown/forest-server#readme"
+  "homepage": "https://github.com/gathertown/forest-server#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
 }
