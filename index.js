@@ -1,4 +1,7 @@
 const express = require("express");
+
+const { ROOM_ID, API_KEY } = require("./config");
+
 const app = express();
 const port = 3000;
 
