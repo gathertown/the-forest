@@ -1,14 +1,16 @@
+const IS_PROD = true;
+
 const express = require("express");
 const axios = require("axios");
 
-const { ROOM_ID, API_KEY } = require("./config");
+const { PROD_ROOM_ID, DEV_ROOM_ID, API_KEY } = require("./config");
+const ROOM_ID = IS_PROD ? PROD_ROOM_ID : DEV_ROOM_ID;
 const N = 150;
 const MAP_ID = "forest-v1";
-const REGROW_PROB = 0.1;
+const REGROW_PROB = 0.05;
 
 const app = express();
-// const port = 3333;
-const port = 80;
+const port = IS_PROD ? 80 : 3333;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -36,7 +38,7 @@ const writeMap = async () => {
 		for (let c = 0; c < N; c++) {
 			const middleCircle =
 				(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) < 25 ||
-				(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) > 500; // more trees makes the request too large :(
+				(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) > 200; // more than 500 makes the request too large :(
 			// impassable[[r, c]] && impassable[[r, c]].imp ? 0x01 : 0x00
 			collBytes.push(middleCircle || holes[[c, r]] ? 0x00 : 0x01);
 			// add tree if no hole
@@ -50,7 +52,11 @@ const writeMap = async () => {
 					y: r - 1,
 					type: 1,
 					properties: {
-						url: `http://localhost:3333/chopTree?x=${c}&y=${r}`,
+						url: `${
+							IS_PROD
+								? "https://forest-001.gather.town"
+								: "http://localhost:3333"
+						}/chopTree?x=${c}&y=${r}`,
 					},
 					previewMessage: "double tap x to chop",
 					...greenTree,
@@ -69,13 +75,17 @@ const writeMap = async () => {
 		collisions: new Buffer(collBytes).toString("base64"), // base64 encoded array of dimensions[1] x dimensions[0] bytes
 		portals: [],
 	};
-	// await axios.post("http://localhost:8080/api/setMap", {
-	await axios.post("https://gather.town/api/setMap", {
-		apiKey: API_KEY,
-		spaceId: ROOM_ID,
-		mapId: MAP_ID,
-		mapContent: map,
-	});
+	await axios.post(
+		IS_PROD
+			? "https://gather.town/api/setMap"
+			: "http://localhost:8080/api/setMap",
+		{
+			apiKey: API_KEY,
+			spaceId: ROOM_ID,
+			mapId: MAP_ID,
+			mapContent: map,
+		}
+	);
 };
 
 const regrow = () => {
