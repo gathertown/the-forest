@@ -7,7 +7,8 @@ const MAP_ID = "forest-v1";
 const REGROW_PROB = 0.1;
 
 const app = express();
-const port = 3333;
+// const port = 3333;
+const port = 80;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
