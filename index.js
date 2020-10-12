@@ -42,7 +42,11 @@ const writeMap = async () => {
 			// impassable[[r, c]] && impassable[[r, c]].imp ? 0x01 : 0x00
 			collBytes.push(middleCircle || holes[[c, r]] ? 0x00 : 0x01);
 			// add tree if no hole
-			if (!middleCircle && !holes[[c, r]])
+			if (!middleCircle && !holes[[c, r]]) {
+				const color = // randomly assign red/green
+					(7 * (c * c * c + r * r + 5 * c) + r * c * 2) % 9 < 1
+						? redTree
+						: greenTree;
 				trees.push({
 					scale: 1,
 					height: 2,
@@ -59,8 +63,9 @@ const writeMap = async () => {
 						}/chopTree?x=${c}&y=${r}`,
 					},
 					previewMessage: "double tap x to chop",
-					...greenTree,
+					...color,
 				});
+			}
 		}
 	}
 
