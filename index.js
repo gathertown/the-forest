@@ -7,7 +7,7 @@ const { PROD_ROOM_ID, DEV_ROOM_ID, API_KEY } = require("./config");
 const ROOM_ID = IS_PROD ? PROD_ROOM_ID : DEV_ROOM_ID;
 const N = 150;
 const MAP_ID = "forest-v1";
-const REGROW_PROB = 0.05;
+const REGROW_PROB = 0.1;
 
 const app = express();
 const port = IS_PROD ? 80 : 3333;
@@ -16,21 +16,25 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let holes = {}; // missing trees. keyed by [x,y] cast to string
 
-const writeMap = async () => {
-	const greenTree = {
-		normal:
-			"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-green.png?alt=media&token=b92b7d03-1f03-40f9-88f5-8dc683b6590e",
-		highlighted:
-			"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/assets%2Fe931d0ec-5126-4a62-bca4-3c6af1385c0f?alt=media&token=daf4c0ce-8545-4905-a64c-881700b1d981",
-	};
-	const redTree = {
-		normal:
-			"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-red.png?alt=media&token=5e44e76f-2922-4617-9e6b-13e7d6857a53",
-		highlighted:
-			"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/assets%2Feedf4d2d-ff6e-42ee-a003-028e94074045?alt=media&token=759836f8-da17-49a9-b4ea-b71c2ae35ba5",
-	};
+// images used
+const greenTree = {
+	normal:
+		"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-green.png?alt=media&token=b92b7d03-1f03-40f9-88f5-8dc683b6590e",
+	highlighted:
+		"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/assets%2Fe931d0ec-5126-4a62-bca4-3c6af1385c0f?alt=media&token=daf4c0ce-8545-4905-a64c-881700b1d981",
+};
+const redTree = {
+	normal:
+		"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-red.png?alt=media&token=5e44e76f-2922-4617-9e6b-13e7d6857a53",
+	highlighted:
+		"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/assets%2Feedf4d2d-ff6e-42ee-a003-028e94074045?alt=media&token=759836f8-da17-49a9-b4ea-b71c2ae35ba5",
+};
+const vineSrc =
+	"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fvines.png?alt=media&token=1b82621d-9428-4f03-bf1e-833447dde06f";
 
+const writeMap = async () => {
 	let trees = [];
+	let assets = [];
 
 	// collisions
 	let collBytes = [];
@@ -66,6 +70,17 @@ const writeMap = async () => {
 					...color,
 				});
 			}
+			if (holes[[c, r]]?.growing) {
+				// about to regrow -- put vines
+				assets.push({
+					width: 1,
+					height: 1,
+					x: c,
+					y: r,
+					src: vineSrc,
+					inFront: false,
+				});
+			}
 		}
 	}
 
@@ -77,6 +92,7 @@ const writeMap = async () => {
 		dimensions: [N, N],
 		// objectSizes
 		objects: trees,
+		assets: assets,
 		collisions: new Buffer(collBytes).toString("base64"), // base64 encoded array of dimensions[1] x dimensions[0] bytes
 		portals: [],
 	};
@@ -96,15 +112,25 @@ const writeMap = async () => {
 const regrow = () => {
 	Object.values(holes).forEach((hole) => {
 		const { x, y } = hole;
-		// if there's a tree adjacent and the randomness checks out, delete the hole
 		if (
-			(!holes[[x, y + 1]] ||
-				!holes[[x - 1, y]] ||
-				!holes[[x, y - 1]] ||
-				!holes[[x + 1, y]]) &&
-			Math.random() < REGROW_PROB
-		)
+			holes[[x, y + 1]] &&
+			holes[[x, y - 1]] &&
+			holes[[x + 1, y]] &&
+			holes[[x - 1, y]]
+		) {
+			// if no neighboring trees, nothing can grow. do nothing
+			holes[[x, y]].growing = false;
+			return;
+		}
+		// if vines, grow to a tree
+		if (hole.growing) {
 			delete holes[[x, y]];
+			return;
+		}
+		// if there's a tree adjacent and the randomness checks out, grow vines
+		if (Math.random() < REGROW_PROB) {
+			holes[[x, y]].growing = true;
+		}
 	});
 	return writeMap();
 };
@@ -127,7 +153,7 @@ writeMap();
 // set up regrow tick
 (async () => {
 	while (true) {
-		await sleep(3000);
+		await sleep(5000);
 		await regrow().catch(console.error);
 	}
 })();
