@@ -12,6 +12,8 @@ module.exports = {
 };
 ```
 
+change `const IS_PROD = true` to `false` in the first line of `index.js` to run locally. you'll also need gather running locally
+
 start it with `node index.js` (long running process)
 
 will need to change that space's starting map to `forest-v1` -- or change the `MAP_ID` in `index.js` to suit your space
