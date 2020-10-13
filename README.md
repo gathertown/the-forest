@@ -1,5 +1,9 @@
 # forest-server
 
+The code behind [The Forest](https://gather.town/app/e5kK4mRdSOALriFT/TheForest), a dynamic, living Gather map.
+
+(better documentation and easier setup coming this week!)
+
 ## FYI
 
 needs `config.js` in the root dir filled with the following:
