@@ -1,5 +1,5 @@
 import { API_KEY } from "./api-key";
-import { Game } from "@gathertown/gather-game-client";
+import { Game, WireObject } from "@gathertown/gather-game-client";
 global.WebSocket = require("isomorphic-ws");
 
 // const SPACE_ID = "e5kK4mRdSOALriFT\\TheForest";
@@ -11,20 +11,22 @@ const REGROW_MS = 5000;
 
 // images used
 
+const background =
+	"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fforest-v1.png?alt=media&token=23f570f6-e15d-40a3-b44c-d4359334bba3";
 const greenTree = {
 	normal:
-		"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-green.png?alt=media&token=b92b7d03-1f03-40f9-88f5-8dc683b6590e",
+		"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-green.png?alt=media&token=b92b7d03-1f03-40f9-88f5-8dc683b6590e",
 	highlighted:
 		"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/assets%2Fe931d0ec-5126-4a62-bca4-3c6af1385c0f?alt=media&token=daf4c0ce-8545-4905-a64c-881700b1d981",
 };
 const redTree = {
 	normal:
-		"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-red.png?alt=media&token=5e44e76f-2922-4617-9e6b-13e7d6857a53",
+		"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-red.png?alt=media&token=5e44e76f-2922-4617-9e6b-13e7d6857a53",
 	highlighted:
 		"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/assets%2Feedf4d2d-ff6e-42ee-a003-028e94074045?alt=media&token=759836f8-da17-49a9-b4ea-b71c2ae35ba5",
 };
 const vineSrc =
-	"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fvines.png?alt=media&token=1b82621d-9428-4f03-bf1e-833447dde06f";
+	"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fvines.png?alt=media&token=1b82621d-9428-4f03-bf1e-833447dde06f";
 
 // setup
 
@@ -33,17 +35,108 @@ game.debugOverrideServer = "ws://localhost:3000";
 game.connect(SPACE_ID); // replace with your spaceId of choice
 game.subscribeToConnection((connected) => console.log("connected?", connected));
 
-//
+// utils
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const randomTree = (): { normal: string; highlighted: string } => {
+	return Math.random() < 0.25 ? redTree : greenTree;
+};
+
 //
 
+// just for first time setup
 const cleanSlate = () => {
-	game.subscribeToEvent("mapSetObjects", async (data, context) => {
-		if (data.mapSetObjects.mapId === MAP_ID) {
+	let startedCleanup = false;
+
+	game.subscribeToEvent("mapSetObjects", (data, context) => {
+		// wait for the map of interest to load
+		if (data.mapSetObjects.mapId === MAP_ID && !startedCleanup) {
 			console.log("resetting", MAP_ID);
+			startedCleanup = true; // so more events triggered by stuff in here doesn't make us do it all again
+
+			game.engine.sendAction({
+				$case: "mapSetDimensions",
+				mapSetDimensions: {
+					mapId: MAP_ID,
+					width: N,
+					height: N,
+				},
+			});
+			game.engine.sendAction({
+				$case: "mapSetBackgroundImagePath",
+				mapSetBackgroundImagePath: {
+					mapId: MAP_ID,
+					backgroundImagePath: background,
+				},
+			});
+			game.engine.sendAction({
+				$case: "mapSetSpawns",
+				mapSetSpawns: {
+					mapId: MAP_ID,
+					spawns: [{ x: N / 2, y: N / 2 }],
+				},
+			});
+			// generate trees and impassable tiles
+			const impassableAsBytes = [];
+			const objects: { [key: number]: WireObject } = {};
+			let treeCount = 0;
+
+			for (let r = 0; r < N; r++) {
+				// important that rows are first here, so they're drawn in the right order
+				for (let c = 0; c < N; c++) {
+					const noTree =
+						(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) < 25 || // inner circle
+						(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) > 500; // outer circle
+					impassableAsBytes.push(noTree ? 0x00 : 0x01);
+
+					if (!noTree) {
+						const treeImages = randomTree();
+						objects[treeCount] = {
+							height: 2,
+							width: 1,
+							distThreshold: 1,
+							x: c,
+							y: r - 1,
+							type: 5,
+							previewMessage: "press x to chop",
+							normal: treeImages.normal,
+							highlighted: treeImages.highlighted,
+							_tags: [],
+						};
+
+						treeCount += 1;
+					}
+				}
+			}
+
+			game.engine.sendAction({
+				$case: "mapSetCollisions",
+				mapSetCollisions: {
+					mapId: MAP_ID,
+					x: 0,
+					y: 0,
+					w: N,
+					h: N,
+					mask: new Buffer(impassableAsBytes).toString("base64"),
+				},
+			});
+			game.engine.sendAction({
+				$case: "mapSetObjects",
+				mapSetObjects: {
+					mapId: MAP_ID,
+					objects,
+				},
+			});
 		}
+	});
+};
+
+const runForest = async () => {
+	// todo
+	game.subscribeToEvent("playerInteracts", (data, context) => {
+		console.log(data);
+		console.log(context);
 	});
 };
 
@@ -105,7 +198,7 @@ const writeMap = async () => {
 
 	let map = {
 		backgroundImagePath:
-			"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fforest-v1.png?alt=media&token=23f570f6-e15d-40a3-b44c-d4359334bba3",
+			"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fforest-v1.png?alt=media&token=23f570f6-e15d-40a3-b44c-d4359334bba3",
 		spawns: [{ x: N / 2, y: N / 2 }],
 		id: MAP_ID,
 		dimensions: [N, N],
@@ -171,4 +264,7 @@ const regrow = () => {
 
 */
 
-cleanSlate();
+//
+
+// cleanSlate(); // first time map setup
+runForest(); // actually running it
