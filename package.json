@@ -1,23 +1,27 @@
 {
-  "name": "forest-server",
-  "version": "1.0.0",
+  "name": "the-forest",
+  "version": "2.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "tsc -b && node dist/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gathertown/forest-server.git"
+    "url": "git+https://github.com/gathertown/the-forest.git"
   },
   "author": "npfoss",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/gathertown/forest-server/issues"
+    "url": "https://github.com/gathertown/the-forest/issues"
   },
-  "homepage": "https://github.com/gathertown/forest-server#readme",
+  "homepage": "https://github.com/gathertown/the-forest#readme",
   "dependencies": {
-    "axios": "^0.20.0",
-    "express": "^4.17.1"
+    "@gathertown/gather-game-client": "31.2.0",
+    "isomorphic-ws": "^4.0.1",
+    "ws": "^8.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^16.7.10"
   }
 }
