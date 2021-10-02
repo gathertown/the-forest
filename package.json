@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/gathertown/the-forest#readme",
   "dependencies": {
-    "@gathertown/gather-game-client": "31.2.1",
+    "@gathertown/gather-game-client": "31.2.2",
     "isomorphic-ws": "^4.0.1",
     "ws": "^8.2.1"
   },

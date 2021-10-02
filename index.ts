@@ -8,6 +8,8 @@ const N = 150;
 const MAP_ID = "forest-v1";
 const REGROW_PROB = 0.1;
 const REGROW_MS = 5000;
+const INNER_RADIUS = 25;
+const OUTER_RADIUS = 500;
 
 // images used
 
@@ -27,6 +29,8 @@ const redTree = {
 };
 const vineSrc =
 	"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fvines.png?alt=media&token=1b82621d-9428-4f03-bf1e-833447dde06f";
+const BLANK =
+	"https://cdn.gather.town/v0/b/gather-town-dev.appspot.com/o/objects%2Fblank.png?alt=media&token=6564fd34-433a-4e08-843a-5c4b50d6f9e5";
 
 // setup
 
@@ -43,13 +47,28 @@ const randomTree = (): { normal: string; highlighted: string } => {
 	return Math.random() < 0.25 ? redTree : greenTree;
 };
 
+const locationToId: { [loc: string]: number } = {};
+let treeCount = 0;
+for (let r = 0; r < N; r++) {
+	// important that rows are first here, so they're drawn in the right order
+	for (let c = 0; c < N; c++) {
+		const noTree =
+			(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) < INNER_RADIUS || // inner circle
+			(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) > OUTER_RADIUS; // outer circle
+		if (!noTree) {
+			locationToId[`${c},${r}`] = treeCount;
+			treeCount += 1;
+		}
+	}
+}
+
 //
 
 // just for first time setup
 const cleanSlate = () => {
 	let startedCleanup = false;
 
-	game.subscribeToEvent("mapSetObjects", (data, context) => {
+	game.subscribeToEvent("mapSetObjects", (data, _context) => {
 		// wait for the map of interest to load
 		if (data.mapSetObjects.mapId === MAP_ID && !startedCleanup) {
 			console.log("resetting", MAP_ID);
@@ -80,19 +99,17 @@ const cleanSlate = () => {
 			// generate trees and impassable tiles
 			const impassableAsBytes = [];
 			const objects: { [key: number]: WireObject } = {};
-			let treeCount = 0;
 
 			for (let r = 0; r < N; r++) {
 				// important that rows are first here, so they're drawn in the right order
 				for (let c = 0; c < N; c++) {
-					const noTree =
-						(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) < 25 || // inner circle
-						(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) > 500; // outer circle
-					impassableAsBytes.push(noTree ? 0x00 : 0x01);
+					const treeId = locationToId[`${c},${r}`];
+					impassableAsBytes.push(treeId === undefined ? 0x00 : 0x01);
 
-					if (!noTree) {
+					if (treeId !== undefined) {
 						const treeImages = randomTree();
-						objects[treeCount] = {
+						objects[treeId] = {
+							id: "" + treeId, // typescript wants a string
 							height: 2,
 							width: 1,
 							distThreshold: 1,
@@ -104,8 +121,6 @@ const cleanSlate = () => {
 							highlighted: treeImages.highlighted,
 							_tags: [],
 						};
-
-						treeCount += 1;
 					}
 				}
 			}
@@ -132,94 +147,33 @@ const cleanSlate = () => {
 	});
 };
 
-const runForest = async () => {
-	// todo
-	game.subscribeToEvent("playerInteracts", (data, context) => {
-		console.log(data);
-		console.log(context);
+const runForest = () => {
+	game.subscribeToEvent("playerInteracts", (data, _context) => {
+		const treeId = parseInt(data.playerInteracts.objId);
+		console.log(`tree ${treeId} chopped!`);
+
+		game.engine.sendAction({
+			$case: "mapSetObjects",
+			mapSetObjects: {
+				mapId: MAP_ID,
+				objects: {
+					[treeId]: {
+						type: 0,
+						normal: BLANK,
+						_tags: [],
+					},
+				},
+			},
+		});
 	});
+
+	setInterval(regrow, REGROW_MS);
 };
+
+const regrow = () => {};
 
 /*
 
-let holes = {}; // missing trees. keyed by [x,y] cast to string
-
-const writeMap = async () => {
-	let trees = [];
-	let assets = [];
-
-	// collisions
-	let collBytes = [];
-	for (let r = 0; r < N; r++) {
-		for (let c = 0; c < N; c++) {
-			const middleCircle =
-				(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) < 25 ||
-				(N / 2 - r) * (N / 2 - r) + (N / 2 - c) * (N / 2 - c) > 200; // more than 500 makes the request too large :(
-			// impassable[[r, c]] && impassable[[r, c]].imp ? 0x01 : 0x00
-			collBytes.push(middleCircle || holes[[c, r]] ? 0x00 : 0x01);
-			// add tree if no hole
-			if (!middleCircle && !holes[[c, r]]) {
-				const color = // randomly assign red/green
-					(7 * (c * c * c + r * r + 5 * c) + r * c * 2) % 9 < 1
-						? redTree
-						: greenTree;
-				trees.push({
-					scale: 1,
-					height: 2,
-					width: 1,
-					distThreshold: 1,
-					x: c,
-					y: r - 1,
-					type: 1,
-					properties: {
-						url: `${
-							IS_PROD
-								? "https://forest-001.gather.town"
-								: "http://localhost:3333"
-						}/chopTree?x=${c}&y=${r}`,
-					},
-					previewMessage: "double tap x to chop",
-					...color,
-				});
-			}
-			if (holes[[c, r]]?.growing) {
-				// about to regrow -- put vines
-				assets.push({
-					width: 1,
-					height: 1,
-					x: c,
-					y: r,
-					src: vineSrc,
-					inFront: false,
-				});
-			}
-		}
-	}
-
-	let map = {
-		backgroundImagePath:
-			"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fforest-v1.png?alt=media&token=23f570f6-e15d-40a3-b44c-d4359334bba3",
-		spawns: [{ x: N / 2, y: N / 2 }],
-		id: MAP_ID,
-		dimensions: [N, N],
-		// objectSizes
-		objects: trees,
-		assets: assets,
-		collisions: new Buffer(collBytes).toString("base64"), // base64 encoded array of dimensions[1] x dimensions[0] bytes
-		portals: [],
-	};
-	// await axios.post(
-	// 	IS_PROD
-	// 		? "https://gather.town/api/setMap"
-	// 		: "http://localhost:8080/api/setMap",
-	// 	{
-	// 		apiKey: API_KEY,
-	// 		spaceId: ROOM_ID,
-	// 		mapId: MAP_ID,
-	// 		mapContent: map,
-	// 	}
-	// );
-};
 
 const regrow = () => {
 	Object.values(holes).forEach((hole) => {
@@ -247,20 +201,6 @@ const regrow = () => {
 	return writeMap();
 };
 
-// app.get("/chopTree", (req, res) => {
-// 	holes[[req.query.x, req.query.y]] = { ...req.query };
-// 	writeMap();
-// });
-
-// writeMap();
-
-// set up regrow tick
-// (async () => {
-// 	while (true) {
-// 		await sleep(REGROW_MS);
-// 		await regrow().catch(console.error);
-// 	}
-// })();
 
 */
 
