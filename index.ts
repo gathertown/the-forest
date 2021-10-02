@@ -2,8 +2,7 @@ import { API_KEY } from "./api-key";
 import { Game, WireObject } from "@gathertown/gather-game-client";
 global.WebSocket = require("isomorphic-ws");
 
-// const SPACE_ID = "e5kK4mRdSOALriFT\\TheForest";
-const SPACE_ID = "oFz81x6yCVKjL5qt\\TheForest";
+const SPACE_ID = "e5kK4mRdSOALriFT\\TheForest";
 const N = 150;
 const MAP_ID = "forest-v1";
 const REGROW_PROB = 0.05;
@@ -35,7 +34,6 @@ const BLANK =
 // setup
 
 const game = new Game(() => Promise.resolve({ apiKey: API_KEY }));
-game.debugOverrideServer = "ws://localhost:3000";
 game.connect(SPACE_ID); // replace with your spaceId of choice
 game.subscribeToConnection((connected) => console.log("connected?", connected));
 
