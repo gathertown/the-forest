@@ -10,13 +10,13 @@ prereq: have NodeJS and npm installed
 
 run `npm install`
 
-put your API key in a file named `api-key.js` like so:
+put your API key in a file named `api-key.ts` like so:
 
 ```js
-exports.API_KEY = "your-api-key-here";
+export const API_KEY = "your-api-key-here";
 ```
 
-replace the spaceId in index.ts with your own
+replace the `SPACE_ID` in index.ts with your own spaceId
 
 ## running
 
