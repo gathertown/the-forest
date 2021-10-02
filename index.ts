@@ -6,10 +6,10 @@ global.WebSocket = require("isomorphic-ws");
 const SPACE_ID = "oFz81x6yCVKjL5qt\\TheForest";
 const N = 150;
 const MAP_ID = "forest-v1";
-const REGROW_PROB = 0.1;
+const REGROW_PROB = 0.05;
 const REGROW_MS = 5000;
 const INNER_RADIUS = 25;
-const OUTER_RADIUS = 500;
+const OUTER_RADIUS = 700;
 
 // images used
 
@@ -28,7 +28,7 @@ const redTree = {
 		"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/assets%2Feedf4d2d-ff6e-42ee-a003-028e94074045?alt=media&token=759836f8-da17-49a9-b4ea-b71c2ae35ba5",
 };
 const vineSrc =
-	"https://cdn.gather.town/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fvines.png?alt=media&token=1b82621d-9428-4f03-bf1e-833447dde06f";
+	"https://cdn.gather.town/storage.googleapis.com/gather-town.appspot.com/uploads/SWaZgxCQMTE6C1lq/DNDUXum2k4MTp0TLFxacut";
 const BLANK =
 	"https://cdn.gather.town/v0/b/gather-town-dev.appspot.com/o/objects%2Fblank.png?alt=media&token=6564fd34-433a-4e08-843a-5c4b50d6f9e5";
 
@@ -119,7 +119,8 @@ const cleanSlate = () => {
 							previewMessage: "press x to chop",
 							normal: treeImages.normal,
 							highlighted: treeImages.highlighted,
-							_tags: [],
+							customState: "tree",
+							_tags: [], // smh we're going to hopefully get rid of this soon but for now you just have to include it with setObject actions, sorry
 						};
 					}
 				}
@@ -147,6 +148,8 @@ const cleanSlate = () => {
 	});
 };
 
+// ********* main process *****************
+
 const runForest = () => {
 	game.subscribeToEvent("playerInteracts", (data, _context) => {
 		const treeId = parseInt(data.playerInteracts.objId);
@@ -160,51 +163,83 @@ const runForest = () => {
 					[treeId]: {
 						type: 0,
 						normal: BLANK,
-						_tags: [],
+						customState: "hole",
+						_tags: [], // smh we're going to hopefully get rid of this soon but for now you just have to include it with setObject actions, sorry
 					},
 				},
 			},
 		});
+		// need to get the tree's location from the map object
+		const { x, y } = game.partialMaps[MAP_ID].objects?.[treeId]!; // the ! tells TS that I'm certain this tree exists. slightly unsafe but cleaner
+		game.setImpassable(MAP_ID, x, y + 1, false); // +1 because the y is the top of the tree, and positive y is down
 	});
 
-	setInterval(regrow, REGROW_MS);
+	// set up an interval to regrow stuff every N seconds
+	setInterval(() => {
+		console.log("doing regrowth");
+		// regrowth:
+		// grow vines into trees, always
+		// randomly place vines on empty tiles
+
+		// first loop through and find where the vines and holes are
+		const vines = [];
+		const holes = [];
+		for (const _key in game.partialMaps[MAP_ID].objects) {
+			const key = parseInt(_key);
+			const obj = game.partialMaps[MAP_ID]?.objects?.[key];
+			if (!obj) {
+				console.error("unexpected missing tree??", key);
+				continue;
+			}
+			if (obj.customState === "hole") {
+				holes.push(key);
+			}
+			if (obj.customState === "vine") {
+				vines.push(key);
+			}
+		}
+
+		const objectUpdates: { [key: number]: WireObject } = {};
+		// grow the vines
+		vines.forEach((key) => {
+			const tree = randomTree();
+			// make it a tree again
+			objectUpdates[key] = {
+				type: 5,
+				normal: tree.normal,
+				highlighted: tree.highlighted,
+				customState: "tree",
+				_tags: [], // smh we're going to hopefully get rid of this soon but for now you just have to include it with setObject actions, sorry
+			};
+			// make this tile impassable again too
+			const { x, y } = game.partialMaps[MAP_ID].objects?.[key]!; // the ! tells TS that I'm certain this tree exists. slightly unsafe but cleaner
+			game.setImpassable(MAP_ID, x, y + 1, true); // +1 because the y is the top of the tree, and positive y is down
+		});
+		// maybe grow the holes
+		holes.forEach((key) => {
+			if (Math.random() < REGROW_PROB) {
+				objectUpdates[key] = {
+					normal: vineSrc,
+					customState: "vine",
+					_tags: [], // smh we're going to hopefully get rid of this soon but for now you just have to include it with setObject actions, sorry
+				};
+			}
+		});
+
+		// send obj updates
+		game.engine.sendAction({
+			$case: "mapSetObjects",
+			mapSetObjects: {
+				mapId: MAP_ID,
+				objects: objectUpdates,
+			},
+		});
+	}, REGROW_MS);
 };
-
-const regrow = () => {};
-
-/*
-
-
-const regrow = () => {
-	Object.values(holes).forEach((hole) => {
-		const { x, y } = hole;
-		if (
-			holes[[x, y + 1]] &&
-			holes[[x, y - 1]] &&
-			holes[[x + 1, y]] &&
-			holes[[x - 1, y]]
-		) {
-			// if no neighboring trees, nothing can grow. do nothing
-			holes[[x, y]].growing = false;
-			return;
-		}
-		// if vines, grow to a tree
-		if (hole.growing) {
-			delete holes[[x, y]];
-			return;
-		}
-		// if there's a tree adjacent and the randomness checks out, grow vines
-		if (Math.random() < REGROW_PROB) {
-			holes[[x, y]].growing = true;
-		}
-	});
-	return writeMap();
-};
-
-
-*/
 
 //
+
+// main function call
 
 // cleanSlate(); // first time map setup
 runForest(); // actually running it
