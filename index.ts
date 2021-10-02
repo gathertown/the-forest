@@ -1,16 +1,11 @@
-const IS_PROD = true;
+const { API_KEY } = require("./api-key");
+const { Game } = require("@gathertown/gather-game-client");
+global.WebSocket = require("isomorphic-ws");
 
-const express = require("express");
-const axios = require("axios");
-
-const { PROD_ROOM_ID, DEV_ROOM_ID, API_KEY } = require("./config");
-const ROOM_ID = IS_PROD ? PROD_ROOM_ID : DEV_ROOM_ID;
+const ROOM_ID = "e5kK4mRdSOALriFT\\TheForest";
 const N = 150;
 const MAP_ID = "forest-v1";
 const REGROW_PROB = 0.1;
-
-const app = express();
-const port = IS_PROD ? 80 : 3333;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -96,17 +91,17 @@ const writeMap = async () => {
 		collisions: new Buffer(collBytes).toString("base64"), // base64 encoded array of dimensions[1] x dimensions[0] bytes
 		portals: [],
 	};
-	await axios.post(
-		IS_PROD
-			? "https://gather.town/api/setMap"
-			: "http://localhost:8080/api/setMap",
-		{
-			apiKey: API_KEY,
-			spaceId: ROOM_ID,
-			mapId: MAP_ID,
-			mapContent: map,
-		}
-	);
+	// await axios.post(
+	// 	IS_PROD
+	// 		? "https://gather.town/api/setMap"
+	// 		: "http://localhost:8080/api/setMap",
+	// 	{
+	// 		apiKey: API_KEY,
+	// 		spaceId: ROOM_ID,
+	// 		mapId: MAP_ID,
+	// 		mapContent: map,
+	// 	}
+	// );
 };
 
 const regrow = () => {
@@ -135,18 +130,10 @@ const regrow = () => {
 	return writeMap();
 };
 
-app.get("/", (req, res) => {
-	res.send("Hello World!");
-});
-
-app.get("/chopTree", (req, res) => {
-	holes[[req.query.x, req.query.y]] = { ...req.query };
-	writeMap();
-});
-
-app.listen(port, () => {
-	console.log(`Example app listening at http://localhost:${port}`);
-});
+// app.get("/chopTree", (req, res) => {
+// 	holes[[req.query.x, req.query.y]] = { ...req.query };
+// 	writeMap();
+// });
 
 writeMap();
 
