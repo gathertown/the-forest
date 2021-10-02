@@ -1,17 +1,16 @@
-const { API_KEY } = require("./api-key");
-const { Game } = require("@gathertown/gather-game-client");
+import { API_KEY } from "./api-key";
+import { Game } from "@gathertown/gather-game-client";
 global.WebSocket = require("isomorphic-ws");
 
-const ROOM_ID = "e5kK4mRdSOALriFT\\TheForest";
+// const SPACE_ID = "e5kK4mRdSOALriFT\\TheForest";
+const SPACE_ID = "oFz81x6yCVKjL5qt\\TheForest";
 const N = 150;
 const MAP_ID = "forest-v1";
 const REGROW_PROB = 0.1;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-let holes = {}; // missing trees. keyed by [x,y] cast to string
+const REGROW_MS = 5000;
 
 // images used
+
 const greenTree = {
 	normal:
 		"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Ftree-green.png?alt=media&token=b92b7d03-1f03-40f9-88f5-8dc683b6590e",
@@ -26,6 +25,31 @@ const redTree = {
 };
 const vineSrc =
 	"https://firebasestorage.googleapis.com/v0/b/gather-town.appspot.com/o/manually-uploaded%2Fvines.png?alt=media&token=1b82621d-9428-4f03-bf1e-833447dde06f";
+
+// setup
+
+const game = new Game(() => Promise.resolve({ apiKey: API_KEY }));
+game.debugOverrideServer = "ws://localhost:3000";
+game.connect(SPACE_ID); // replace with your spaceId of choice
+game.subscribeToConnection((connected) => console.log("connected?", connected));
+
+//
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+//
+
+const cleanSlate = () => {
+	game.subscribeToEvent("mapSetObjects", async (data, context) => {
+		if (data.mapSetObjects.mapId === MAP_ID) {
+			console.log("resetting", MAP_ID);
+		}
+	});
+};
+
+/*
+
+let holes = {}; // missing trees. keyed by [x,y] cast to string
 
 const writeMap = async () => {
 	let trees = [];
@@ -135,12 +159,16 @@ const regrow = () => {
 // 	writeMap();
 // });
 
-writeMap();
+// writeMap();
 
 // set up regrow tick
-(async () => {
-	while (true) {
-		await sleep(5000);
-		await regrow().catch(console.error);
-	}
-})();
+// (async () => {
+// 	while (true) {
+// 		await sleep(REGROW_MS);
+// 		await regrow().catch(console.error);
+// 	}
+// })();
+
+*/
+
+cleanSlate();
