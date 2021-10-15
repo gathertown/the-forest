@@ -42,7 +42,7 @@ game.subscribeToConnection((connected) => console.log("connected?", connected));
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const randomTree = (): { normal: string; highlighted: string } => {
-	return Math.random() < 0.25 ? redTree : greenTree;
+	return Math.random() < 0.75 ? redTree : greenTree;
 };
 
 const locationToId: { [loc: string]: number } = {};
