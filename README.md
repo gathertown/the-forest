@@ -16,7 +16,9 @@ put your API key in a file named `api-key.ts` like so:
 export const API_KEY = "your-api-key-here";
 ```
 
-replace the `SPACE_ID` in `index.ts` with your own spaceId
+replace the `SPACE_ID` and `MAP_ID` in `index.ts` with your own
+
+first time: comment in `cleanSlate()` at the bottom of `index.ts` to do the initial map setup, but after that just run `runForest()`
 
 ## running
 
