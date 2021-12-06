@@ -91,7 +91,7 @@ const cleanSlate = () => {
 				$case: "mapSetSpawns",
 				mapSetSpawns: {
 					mapId: MAP_ID,
-					spawns: [{ x: N / 2, y: N / 2 }],
+					spawns: [{ x: N / 2, y: N / 2 - 1 }],
 				},
 			});
 			// generate trees and impassable tiles
