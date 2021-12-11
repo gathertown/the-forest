@@ -8,7 +8,7 @@ const MAP_ID = "forest-v1";
 const REGROW_PROB = 0.05;
 const REGROW_MS = 5000;
 const INNER_RADIUS = 25;
-const OUTER_RADIUS = 700;
+const OUTER_RADIUS = 600;
 
 // images used
 
