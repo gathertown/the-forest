@@ -1,5 +1,8 @@
 api-key.*
 
+
+.idea
+
 # Logs
 logs
 *.log
