@@ -2,6 +2,7 @@ import { API_KEY } from "./api-key";
 import { Game, WireObject } from "@gathertown/gather-game-client";
 global.WebSocket = require("isomorphic-ws");
 
+// replace with your spaceId, that you can edit
 const SPACE_ID = "e5kK4mRdSOALriFT\\TheForest";
 const N = 150;
 const MAP_ID = "forest-v1";
@@ -33,8 +34,8 @@ const BLANK =
 
 // setup
 
-const game = new Game(() => Promise.resolve({ apiKey: API_KEY }));
-game.connect(SPACE_ID); // replace with your spaceId of choice
+const game = new Game(SPACE_ID, () => Promise.resolve({ apiKey: API_KEY }));
+game.connect();
 game.subscribeToConnection((connected) => console.log("connected?", connected));
 
 // utils
@@ -72,7 +73,7 @@ const cleanSlate = () => {
 			console.log("resetting", MAP_ID);
 			startedCleanup = true; // so more events triggered by stuff in here doesn't make us do it all again
 
-			game.engine.sendAction({
+			game.sendAction({
 				$case: "mapSetDimensions",
 				mapSetDimensions: {
 					mapId: MAP_ID,
@@ -80,14 +81,14 @@ const cleanSlate = () => {
 					height: N,
 				},
 			});
-			game.engine.sendAction({
+			game.sendAction({
 				$case: "mapSetBackgroundImagePath",
 				mapSetBackgroundImagePath: {
 					mapId: MAP_ID,
 					backgroundImagePath: background,
 				},
 			});
-			game.engine.sendAction({
+			game.sendAction({
 				$case: "mapSetSpawns",
 				mapSetSpawns: {
 					mapId: MAP_ID,
@@ -124,7 +125,7 @@ const cleanSlate = () => {
 				}
 			}
 
-			game.engine.sendAction({
+			game.sendAction({
 				$case: "mapSetCollisions",
 				mapSetCollisions: {
 					mapId: MAP_ID,
@@ -135,7 +136,7 @@ const cleanSlate = () => {
 					mask: new Buffer(impassableAsBytes).toString("base64"),
 				},
 			});
-			game.engine.sendAction({
+			game.sendAction({
 				$case: "mapSetObjects",
 				mapSetObjects: {
 					mapId: MAP_ID,
@@ -153,7 +154,7 @@ const runForest = () => {
 		const treeId = parseInt(data.playerInteracts.objId);
 		console.log(`tree ${treeId} chopped!`);
 
-		game.engine.sendAction({
+		game.sendAction({
 			$case: "mapSetObjects",
 			mapSetObjects: {
 				mapId: MAP_ID,
@@ -225,7 +226,7 @@ const runForest = () => {
 		});
 
 		// send obj updates
-		game.engine.sendAction({
+		game.sendAction({
 			$case: "mapSetObjects",
 			mapSetObjects: {
 				mapId: MAP_ID,
