@@ -1,6 +1,6 @@
 # The Forest (v2)
 
-The code behind [The Forest](https://gather.town/app/e5kK4mRdSOALriFT/TheForest), a dynamic, living Gather map.
+The code behind The Forest, a dynamic, living Gather map.
 
 Also a great example of a simple mod built with the [Gather API](https://gathertown.notion.site/Gather-Websocket-API-bf2d5d4526db412590c3579c36141063)!
 
